@@ -1,0 +1,14 @@
+{
+    "Rawz Duck": {
+        "url": "https://healthypetaustin.com/products/rawz-cat-96-duck-duck-liver-pate",
+        "desired_price": 5
+    },
+    "Nature's Logic Rabbit": {
+        "url": "https://healthypetaustin.com/products/natures-logic-feline-rabbit-feast",
+        "desired_price": 2
+    },
+    "Rawz Chicken": {
+        "url": "https://healthypetaustin.com/products/rawz-cat-96-chicken-chicken-liver-pate",
+        "desired_price": 2.5
+    }
+}
