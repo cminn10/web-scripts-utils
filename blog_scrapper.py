@@ -1,11 +1,12 @@
 import utils.blog_utils as utils
 from config import REPO_URL
 
-# work_ids = utils.get_work_ids(REPO_URL)
-# for work_id in work_ids:
-#     result = utils.query_result(work_id)
-#     print(result)
-#     utils.render_documents(**result)
+work_ids = utils.get_work_ids(REPO_URL)
+for work_id in work_ids:
+    result = utils.query_result(work_id)
+    print(result)
+    utils.sync_db(result)
+    # utils.render_documents(**result)
 
 # tests
 works = [
@@ -262,4 +263,5 @@ for w in works:
     res = utils.query_result_lofter(work_id)
     print(res)
     if res['title']:
-        utils.render_documents(**res)
+        utils.sync_db(res)
+        # utils.render_documents(**res)

@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup
 import requests
 import re
 from config import TAG_MAPPING, REPO_URL, LOFTER_REPO_BASE as BASE
+from utils.db_utils import Blog_db_utils
+
+db = Blog_db_utils()
 
 
 def html_to_markdown(html_string):
@@ -35,12 +38,16 @@ def query_result(work_id):
     tags.extend(fandoms)
     tags = [TAG_MAPPING[tag] if tag in TAG_MAPPING else tag for tag in tags]
     summary_div = soup.select("#workskin > div:nth-child(1) > div.summary.module > blockquote > p")
-    summary = r'\n\n'.join([html_to_markdown(str(p_element)) for p_element in summary_div])
+    summary = ''.join([str(p) for p in summary_div])
+    # summary = r'\n\n'.join([html_to_markdown(str(p_element)) for p_element in summary_div])
     note1_div = soup.select("#workskin > div:nth-child(1) > div.notes.module > blockquote > p")
-    note1 = r'\n\n'.join([html_to_markdown(str(note)) for note in note1_div])
+    note1 = ''.join([str(p) for p in note1_div])
+    # note1 = r'\n\n'.join([html_to_markdown(str(note)) for note in note1_div])
     note2_div = soup.select("#work_endnotes > blockquote > p")
-    note2 = r'\n\n'.join([html_to_markdown(str(note)) for note in note2_div])
-    body = [str(p_element) for p_element in soup.select("#chapters > div > p")]
+    note2 = ''.join([str(p) for p in note2_div])
+    # note2 = r'\n\n'.join([html_to_markdown(str(note)) for note in note2_div])
+    body_div = soup.select("#chapters > div > p")
+    body = ''.join([str(p_element) for p_element in body_div])
 
     return {
         "title": title,
@@ -68,7 +75,7 @@ def query_result_lofter(work_id):
     tags = [tag for tag in tag_lst if len(tag) <= 8]
     body_div = soup.select('body > div > div.g-mn > div > div.m-postdtl > div > div > div.ct > div > div > p')
     body = [str(p_element) for p_element in body_div]
-    body = [e for e in body if '<a' not in e]
+    body = ''.join([e for e in body if '<a' not in e])
     return {
         "title": title,
         "date": date,
@@ -86,3 +93,29 @@ def render_documents(title, date, tags, body, summary=None, note1=None, note2=No
     filename = title.replace('/', '_')
     with open(f'./data/{filename}.md', 'w') as f:
         f.write(rendered_content)
+
+
+def sync_db(blog):
+    db.connect()
+
+    last_blog = db.execute_query('SELECT * FROM blog ORDER BY id DESC LIMIT 1')
+    curr_id = last_blog[0]['id'] + 1 if last_blog else 1
+
+    db.execute_update(f'''
+        INSERT INTO blog (user_id, id, title, content, summary, note, end_note, created_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (1, curr_id, blog.get('title', ''), blog.get('body', ''), blog.get('summary', ''),
+        blog.get('note1', ''), blog.get('note2', ''), blog.get('date', '')))
+
+    existing_tags = db.execute_query('SELECT * FROM tag ORDER BY id DESC')
+    curr_tag_id = existing_tags[0]['id'] + 1 if existing_tags else 1
+    for tag in blog['tags']:
+        if tag in [t['name'] for t in existing_tags]:
+            tag_id = next(t['id'] for t in existing_tags if t['name'] == tag)
+            db.execute_update(f'INSERT INTO blog_tag (blog_id, tag_id) VALUES ({curr_id}, {tag_id})')
+        else:
+            db.execute_update(f'INSERT INTO tag (id, name) VALUES(?, ?)', (curr_tag_id, tag))
+            db.execute_update(f'INSERT INTO blog_tag (blog_id, tag_id) VALUES ({curr_id}, {curr_tag_id})')
+            curr_tag_id += 1
+
+    db.close()
